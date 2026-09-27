@@ -30,49 +30,162 @@ TEXT2NUM = {
     "восемьдесят": 80,
     "девяносто": 90,
 }
+
+NUM2TEXT = {
+    0: "ноль",
+    1: "один",
+    2: "два",
+    3: "три",
+    4: "четыре",
+    5: "пять",
+    6: "шесть",
+    7: "семь",
+    8: "восемь",
+    9: "девять",
+    10: "десять",
+    11: "одиннадцать",
+    12: "двенадцать",
+    13: "тринадцать",
+    14: "четырнадцать",
+    15: "пятнадцать",
+    16: "шестнадцать",
+    17: "семнадцать",
+    18: "восемнадцать",
+    19: "девятнадцать",
+    20: "двадцать",
+    30: "тридцать",
+    40: "сорок",
+    50: "пятьдесят",
+    60: "шестьдесят",
+    70: "семьдесят",
+    80: "восемьдесят",
+    90: "девяносто",
+    100: "сто",
+    200: "двести",
+    300: "триста",
+    400: "четыреста",
+    500: "пятьсот",
+    600: "шестьсот",
+    700: "семьсот",
+    800: "восемьсот",
+    900: "девятьсот",
+}
+
+NUM2TEXT_R = NUM2TEXT.copy()
+NUM2TEXT_K = NUM2TEXT.copy()
+NUM2TEXT_K.update({1: "одна", 2: "две"})
+
 RUBLE_FORMS = ["рубль", "рубля", "рублей"]
 KOPEK_FORMS = ["копейка", "копейки", "копеек"]
 
 def tokenize(text: str) -> list[str]:
     return text.lower().split()
 
-def words_to_number(words: str) -> int:
-    s = 0
+def words_to_number(words: list[str]) -> int:
+    if not words:
+        raise ValueError("Не указано число")
+
+    number = 0
     for word in words:
-        s += TEXT2NUM[word]
-    return s
+        if word not in TEXT2NUM:
+            raise ValueError(f"Неизвестное слово: {word}")
+        number += TEXT2NUM[word]
+
+    if number > 99:
+        raise ValueError("Рубли и копейки должны быть от 0 до 99")
+    return number
 
 def parse_money(tokens: list[str]) -> int:
-    r_index = next((i for i, word in enumerate(tokens) if word in RUBLE_FORMS), None)
-    k_index = next((i for i, word in enumerate(tokens) if word in KOPEK_FORMS), None)
+    ruble_indexes = [i for i, word in enumerate(tokens) if word in RUBLE_FORMS]
+    kopek_indexes = [i for i, word in enumerate(tokens) if word in KOPEK_FORMS]
+    if len(ruble_indexes) > 1 or len(kopek_indexes) > 1:
+        raise ValueError("В сумме повторяется название денежной единицы")
+
+    r_index = ruble_indexes[0] if ruble_indexes else None
+    k_index = kopek_indexes[0] if kopek_indexes else None
+    if r_index is None and k_index is None:
+        raise ValueError("Укажи рубли или копейки")
+    if r_index is not None and k_index is not None and r_index > k_index:
+        raise ValueError("Сначала укажи рубли, затем копейки")
+
+    last_unit_index = k_index if k_index is not None else r_index
+    if last_unit_index != len(tokens) - 1:
+        raise ValueError("После суммы остались лишние слова")
+
     rubles, kopeks = 0, 0
-    if r_index:
+    if r_index is not None:
         rubles = words_to_number(tokens[:r_index])
-    if k_index:
+    if k_index is not None:
         kopeks_start = r_index + 1 if r_index is not None else 0
         kopeks = words_to_number(tokens[kopeks_start:k_index])
     return rubles*100 + kopeks
 
 def parse_expression(tokens: list[str]) -> int:
-    if "плюс" in tokens:
-        index = tokens.index("плюс")
-        operator = "плюс"
-    elif "минус" in tokens:
-        index = tokens.index("минус")
-        operator = "минус"
+    operators = [(i, word) for i, word in enumerate(tokens) if word in ("плюс", "минус")]
+    if len(operators) != 1:
+        raise ValueError("Нужно указать ровно одну операцию: плюс или минус")
+    index, operator = operators[0]
     left_tokens = tokens[:index]
     right_tokens = tokens[index+1:]
     left = parse_money(left_tokens)
     right = parse_money(right_tokens)
+    if operator == "минус":
+        return left - right
+    elif operator == "плюс":
+        return left + right
+
+def number_to_words(number: int, d: dict) -> str:
+    digits = []
+    digits.append(number // 100 * 100)
+    words = ""
+    if number % 100 > 20:
+        digits.append(number % 100 // 10 * 10)
+        digits.append(number % 10)
+    else:
+        digits.append(number % 100)
+    for dig in digits:
+        if dig:
+            words += (d[dig] + " ")
+    if not any(digits):
+        words += "ноль "
+    return words
+
+def ending(number: int, lst: list) -> str:
+    n_end = number % 100
+    if n_end > 20:
+        n_end %= 10
+    if n_end == 1:
+        return lst[0]
+    elif n_end in [2,3,4]:
+        return lst[1]
+    else:
+        return lst[2]
+
+def money_to_words(total: int) -> str:
+    r_num = total // 100
+    k_num = total % 100
+    r_text = number_to_words(r_num, NUM2TEXT_R) + ending(r_num, RUBLE_FORMS)
+    k_text = number_to_words(k_num, NUM2TEXT_K) + ending(k_num, KOPEK_FORMS)
+    if k_num == 0:
+        return r_text
+    elif r_num == 0:
+        return k_text
+    else:
+        return r_text + " " + k_text
 
 def calc(text: str) -> str:
     tokens = tokenize(text)
-
+    total = parse_expression(tokens)
+    if total < 0:
+        raise ValueError("Результат не может быть отрицательным")
+    return money_to_words(total)
 
 def main():
-    raise NotImplementedError(
-        "Реализуйте лабораторную 2 своего варианта (поле variant в student.json)"
-    )
+    print("Введи две суммы в рублях и/или копейках, со словом «плюс» или «минус».")
+    try:
+        print(calc(input()))
+    except ValueError as error:
+        print(f"Ошибка: {error}")
 
 
 if __name__ == "__main__":
