@@ -1,4 +1,4 @@
-NUMBERS = {
+TEXT2NUM = {
     "ноль": 0,
     "один": 1,
     "одна": 1,
@@ -36,7 +36,11 @@ KOPEK_FORMS = ["копейка", "копейки", "копеек"]
 def tokenize(text: str) -> list[str]:
     return text.lower().split()
 
-def words_to_number()
+def words_to_number(words: str) -> int:
+    s = 0
+    for word in words:
+        s += TEXT2NUM[word]
+    return s
 
 def parse_money(tokens: list[str]) -> int:
     r_index = next((i for i, word in enumerate(tokens) if word in RUBLE_FORMS), None)
