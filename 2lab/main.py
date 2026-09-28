@@ -29,6 +29,15 @@ TEXT2NUM = {
     "семьдесят": 70,
     "восемьдесят": 80,
     "девяносто": 90,
+    "сто": 100,
+    "двести": 200,
+    "триста": 300,
+    "четыреста": 400,
+    "пятьсот": 500,
+    "шестьсот": 600,
+    "семьсот": 700,
+    "восемьсот": 800,
+    "девятьсот": 900
 }
 
 NUM2TEXT = {
@@ -75,25 +84,29 @@ NUM2TEXT_R = NUM2TEXT.copy()
 NUM2TEXT_K = NUM2TEXT.copy()
 NUM2TEXT_K.update({1: "одна", 2: "две"})
 
+THOUSAND_FORMS = ("тысяча", "тысячи", "тысяч")
 RUBLE_FORMS = ["рубль", "рубля", "рублей"]
 KOPEK_FORMS = ["копейка", "копейки", "копеек"]
 
 def tokenize(text: str) -> list[str]:
     return text.lower().split()
 
-def words_to_number(words: list[str]) -> int:
-    if not words:
-        raise ValueError("Не указано число")
-
+def subwords_to_number(words: list[str]) -> int:
     number = 0
     for word in words:
         if word not in TEXT2NUM:
             raise ValueError(f"Неизвестное слово: {word}")
         number += TEXT2NUM[word]
-
-    if number > 99:
-        raise ValueError("Рубли и копейки должны быть от 0 до 99")
     return number
+
+def words_to_number(words: list[str]) -> int:
+    if not words:
+        raise ValueError("Не указано число")
+
+    thousand_index = next((i for i, word in enumerate(words) if word in THOUSAND_FORMS), None)
+    if thousand_index is None:
+        return  subwords_to_number(words)
+    return subwords_to_number(words[:thousand_index])*1000 + subwords_to_number(words[thousand_index + 1:])
 
 def parse_money(tokens: list[str]) -> int:
     ruble_indexes = [i for i, word in enumerate(tokens) if word in RUBLE_FORMS]
@@ -115,9 +128,13 @@ def parse_money(tokens: list[str]) -> int:
     rubles, kopeks = 0, 0
     if r_index is not None:
         rubles = words_to_number(tokens[:r_index])
+        if rubles > 999999:
+            raise ValueError("Сумма должна быть до миллиона")
     if k_index is not None:
         kopeks_start = r_index + 1 if r_index is not None else 0
         kopeks = words_to_number(tokens[kopeks_start:k_index])
+        if kopeks > 99:
+            raise ValueError("Копейки должны быть от 0 до 99")
     return rubles*100 + kopeks
 
 def parse_expression(tokens: list[str]) -> int:
@@ -145,9 +162,9 @@ def number_to_words(number: int, d: dict) -> str:
         digits.append(number % 100)
     for dig in digits:
         if dig:
-            words += (d[dig] + " ")
+            words += (d[dig])
     if not any(digits):
-        words += "ноль "
+        words += "ноль"
     return words
 
 def ending(number: int, lst: list) -> str:
@@ -163,8 +180,17 @@ def ending(number: int, lst: list) -> str:
 
 def money_to_words(total: int) -> str:
     r_num = total // 100
+    thousands = r_num // 1000
+    remains = r_num % 1000
+    parts = []
+    if thousands:
+        parts.append(number_to_words(thousands, NUM2TEXT_K))
+        parts.append(ending(thousands, THOUSAND_FORMS))
+    if remains:
+        parts.append(number_to_words(remains, NUM2TEXT_R))
+    parts.append(ending(remains, RUBLE_FORMS))
+    r_text = " ".join(parts)
     k_num = total % 100
-    r_text = number_to_words(r_num, NUM2TEXT_R) + ending(r_num, RUBLE_FORMS)
     k_text = number_to_words(k_num, NUM2TEXT_K) + ending(k_num, KOPEK_FORMS)
     if k_num == 0:
         return r_text
