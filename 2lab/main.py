@@ -192,12 +192,13 @@ def money_to_words(total: int) -> str:
     r_text = " ".join(parts)
     k_num = total % 100
     k_text = number_to_words(k_num, NUM2TEXT_K) + ending(k_num, KOPEK_FORMS)
+    if r_num == 0:
+        if k_num == 0:
+            return "ноль рублей"
+        return k_text
     if k_num == 0:
         return r_text
-    elif r_num == 0:
-        return k_text
-    else:
-        return r_text + " " + k_text
+    return r_text + " " + k_text
 
 def calc(text: str) -> str:
     tokens = tokenize(text)
