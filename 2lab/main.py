@@ -214,7 +214,7 @@ def money_to_words(total: int) -> str:
     parts.append(ending(remains, RUBLE_FORMS))
     r_text = " ".join(parts)
     k_num = total % 100
-    k_text = number_to_words(k_num, NUM2TEXT_K) + ending(k_num, KOPEK_FORMS)
+    k_text = number_to_words(k_num, NUM2TEXT_K) + " " + ending(k_num, KOPEK_FORMS)
     if r_num == 0:
         if k_num == 0:
             return "ноль рублей"
