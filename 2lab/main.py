@@ -177,7 +177,7 @@ def parse_expression(parts: list[list[str] | str], total: int | None = None) -> 
 def number_to_words(number: int, d: dict) -> str:
     digits = []
     digits.append(number // 100 * 100)
-    words = ""
+    words = []
     if number % 100 > 20:
         digits.append(number % 100 // 10 * 10)
         digits.append(number % 10)
@@ -185,10 +185,10 @@ def number_to_words(number: int, d: dict) -> str:
         digits.append(number % 100)
     for dig in digits:
         if dig:
-            words += (d[dig])
-    if not any(digits):
-        words += "ноль"
-    return words
+            words.append(d[dig])
+    if not words:
+        return "ноль"
+    return " ".join(words)
 
 def ending(number: int, lst: list) -> str:
     n_end = number % 100
